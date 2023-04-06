@@ -1,0 +1,33 @@
+/* .transition-wrapper {
+  position: relative;
+}
+
+.transition-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-size: cover;
+  background-position: center;
+  transition: opacity 1s ease-in-out;
+  z-index: -1;
+}
+
+.bg-light {
+  background-image: url("../assets/oxbow.jpg");
+  opacity: 1;
+}
+
+.bg-dark {
+  background-image: url("../assets/catskills.jpg");
+  opacity: 0;
+}
+
+.is-dark-mode .bg-light {
+  opacity: 0;
+}
+
+.is-dark-mode .bg-dark {
+  opacity: 1;
+} */

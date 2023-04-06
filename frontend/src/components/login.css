@@ -1,0 +1,8 @@
+#root {
+  margin: 1 auto;
+  text-align: center;
+}
+
+.my-input::placeholder {
+  color: white;
+}
