@@ -9,7 +9,7 @@ interface User {
   email: string;
   hygiene: string;
   sleepTime: string;
-  smoking: string;
+  smoke: string;
   pets: string;
   personality: string;
   gender: string;
@@ -34,6 +34,7 @@ const USER_DETAILS = gql`
     hygiene
     personality
     university
+    gender
     major
     sleepTime
     smoke
@@ -153,7 +154,7 @@ const Recommendations: React.FC<RecommendationsResultsProps> = ({
     <>
       <div
         className="flex  flex-col h-full"
-        style={{ maxHeight: "340px", overflowY: "auto" }}
+        style={{ maxHeight: "260px", overflowY: "auto" }}
       >
         <div className="flex flex-wrap justify-between items-start mb-8">
           {recommendations.map((user: any) => (
@@ -215,6 +216,7 @@ const Recommendations: React.FC<RecommendationsResultsProps> = ({
               <h3>Name: {selectedUser.name}</h3>
               <h3>Bio: {selectedUser.bio}</h3>
               <h3>Email: {selectedUser.email}</h3>
+              <h3>Gender: {selectedUser.gender}</h3>
               <h3>Personality: {selectedUser.personality}</h3>
               <h3>Hygiene: {selectedUser.hygiene}</h3>
               <h3>University: {selectedUser.university}</h3>
@@ -222,9 +224,8 @@ const Recommendations: React.FC<RecommendationsResultsProps> = ({
               <h3>
                 Sleep Time: {getSleepTimeDescription(selectedUser.sleepTime)}
               </h3>
-              <h3>Smokes: {selectedUser.smoking}</h3>
+              <h3>Smokes: {selectedUser.smoke}</h3>
               <h3>Has Pets: {selectedUser.pets}</h3>
-              <h3>Hygiene: {selectedUser.username}</h3>
               {/* Render more detailed user attributes here */}
               <button
                 className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 mt-4"
