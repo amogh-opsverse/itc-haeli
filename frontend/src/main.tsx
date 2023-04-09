@@ -11,6 +11,7 @@ import LoginForm from "./components/Login";
 import Home from "./components/Home";
 import Layout from "./components/Layout";
 import HomePageNav from "./components/HomeNav";
+import About from "./components/About";
 import Recommendations from "./components/Recommendations";
 
 //import "./index.css";
@@ -47,6 +48,7 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
             <Route path="/login" element={<LoginForm />} />
             <Route path="/signup" element={<RegistrationForm />} />
             <Route path="/profile-setup" element={<ProfileInfo />} />
+            <Route path="/about" element={<About />} />
           </Route>
           <Route
             path="/home/*"

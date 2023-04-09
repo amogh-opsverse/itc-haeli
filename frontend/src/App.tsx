@@ -14,8 +14,6 @@ import "./styles/tailwind.css";
 import { useEffect, useState } from "react";
 import "./styles/transitions.css";
 
-import { ThemeProvider, createTheme } from "@mui/system";
-import RegistrationForm from "./components/SignUp";
 import { Link } from "react-router-dom";
 import backgroundPic from "./assets/thanatopsis.jpg";
 

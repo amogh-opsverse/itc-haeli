@@ -19,6 +19,7 @@
   "homepage": "https://github.com/ChirayuRai/CPP_ITC_Comp_2023#readme",
   "dependencies": {
     "@apollo/react-hooks": "^3.1.2",
+    "@elastic/elasticsearch": "^8.6.0",
     "@tensorflow/tfjs": "^4.2.0",
     "apollo-cache-inmemory": "^1.6.3",
     "apollo-client": "^2.6.4",

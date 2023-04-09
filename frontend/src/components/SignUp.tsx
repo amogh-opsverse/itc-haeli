@@ -134,7 +134,7 @@ const RegistrationForm = () => {
         backgroundImage: `url(${backgroundPic})`,
       }}
     >
-      <div className="max-w-md border-4 border-black bg-blue-500 bg-opacity-20 w-full space-y-8 p-6 rounded-lg shadow-lg">
+      <div className=" max-w-md border-4 border-black bg-blue-500 bg-opacity-20 w-full space-y-8 p-6 rounded-lg shadow-lg">
         <div>
           <h2
             className="text-2xl font-semibold mb-4 text-center text-white"

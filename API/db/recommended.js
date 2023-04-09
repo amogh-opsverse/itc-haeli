@@ -21,6 +21,9 @@ const RecommendedSchema = new mongoose.Schema({
   },
 });
 
-const RecommendationModel = mongoose.model("Recommendation", RecommendedSchema);
+const RecommendationModel = mongoose.model(
+  "Recommendationtest",
+  RecommendedSchema
+);
 
 module.exports = RecommendationModel;

@@ -11,6 +11,7 @@ const UserSchema = new mongoose.Schema({
   username: {
     type: String,
     unique: true,
+    index: true,
   },
   name: String,
   password: String,
@@ -20,6 +21,7 @@ const UserSchema = new mongoose.Schema({
   },
   bio: String,
   personality: String,
+  gender: String,
   imgUrl: String,
   university: String,
   major: String,
@@ -35,7 +37,15 @@ const UserSchema = new mongoose.Schema({
     default: Date.now,
   },
 });
+UserSchema.index({ university: 1 });
+UserSchema.index({ smoke: 1 });
+UserSchema.index({ sleepTime: 1 });
+UserSchema.index({ guests: 1 });
+UserSchema.index({ personality: 1 });
+UserSchema.index({ gender: 1 });
+UserSchema.index({ hygiene: 1 });
+UserSchema.index({ pets: 1 });
 
-const UserModel = mongoose.model("Usero", UserSchema);
+const UserModel = mongoose.model("Usertest", UserSchema);
 
 module.exports = UserModel;

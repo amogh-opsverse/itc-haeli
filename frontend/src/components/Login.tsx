@@ -23,8 +23,17 @@ const USER_DETAILS = gql`
     username
     imgUrl
     university
+    major
+    sleepTime
+    hygiene
+    hobbies
+    smoke
+    pets
     email
     name
+    bio
+    gender
+    #similarity
     #vaccinated @client
   }
 `;
@@ -103,7 +112,7 @@ const LoginForm = () => {
 
       <form
         onSubmit={handleSubmit}
-        className="bg-blue-500 bg-opacity-20 p-8 border-4 border-black rounded-lg shadow-md w-full max-w-md mx-auto"
+        className=" bg-blue-500 bg-opacity-20 p-8 border-4 border-black rounded-lg shadow-md w-full max-w-md mx-auto"
       >
         <div className="mb-4">
           {/* <label

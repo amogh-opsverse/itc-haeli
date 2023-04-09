@@ -73,7 +73,7 @@ interface University {
 //when the user edits their profile, the edit profile resolver is called which takes the newly
 //updated user, executes the recommender (with the updated user obj and its attrs) to update the
 //the recommendations document in mongodb with the newly recommended list of users under the same username (find and update)
-const ProfileView: React.FC<RecommendationsResultsProps> = ({
+const DetailedProfileView: React.FC<RecommendationsResultsProps> = ({
   loggedInUser,
 }) => {
   // const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -683,4 +683,4 @@ const ProfileView: React.FC<RecommendationsResultsProps> = ({
   );
 };
 
-export default ProfileView;
+export default DetailedProfileView;
