@@ -31,6 +31,13 @@ const USER_DETAILS = gql`
     name
     bio
     email
+    hygiene
+    personality
+    university
+    major
+    sleepTime
+    smoke
+    pets
     similarity
     imgUrl
   }
@@ -143,18 +150,19 @@ const Recommendations: React.FC<RecommendationsResultsProps> = ({
   }, []);
 
   return (
-    <div
-      className="flex  flex-col h-full"
-      style={{ maxHeight: "340px", overflowY: "auto" }}
-    >
-      <div className="flex flex-wrap justify-between items-start mb-8">
-        {recommendations.map((user: any) => (
-          <div
-            key={user.username}
-            className=" p-4 m-2 rounded-lg cursor-pointer hover:shadow-lg"
-            onClick={() => openDetailedView(user)}
-          >
-            {/* <h3
+    <>
+      <div
+        className="flex  flex-col h-full"
+        style={{ maxHeight: "340px", overflowY: "auto" }}
+      >
+        <div className="flex flex-wrap justify-between items-start mb-8">
+          {recommendations.map((user: any) => (
+            <div
+              key={user.username}
+              className=" p-4 m-2 rounded-lg cursor-pointer hover:shadow-lg"
+              onClick={() => openDetailedView(user)}
+            >
+              {/* <h3
               className="font-semibold mb-2 text-white"
               style={{
                 fontFamily: "Roboto, sans-serif",
@@ -165,68 +173,69 @@ const Recommendations: React.FC<RecommendationsResultsProps> = ({
             >
               {user.name}
             </h3> */}
-            <div className="rounded-full mb-16 h-24 w-24 mx-auto mb-4 ">
-              <img
-                //src={profPic}
-                src={user.imgUrl}
-                alt="Profile"
-                className="rounded-full h-full w-full object-cover"
-              />
-            </div>
-            <h3
-              className="font-semibold mb-2 text-white"
-              style={{
-                fontFamily: "Roboto, sans-serif",
-                letterSpacing: "0.05em",
-                textShadow:
-                  "0px 2px 4px rgba(0, 0, 0, 0.5), 0px 4px 6px rgba(0, 0, 0, 0.25)",
-              }}
-            >
-              {(parseFloat(user.similarity) * 100).toFixed(2)}% match
-            </h3>
+              <div className="rounded-full mb-16 h-24 w-24 mx-auto mb-4 ">
+                <img
+                  //src={profPic}
+                  src={user.imgUrl}
+                  alt="Profile"
+                  className="rounded-full h-full w-full object-cover"
+                />
+              </div>
+              <h3
+                className="font-semibold mb-2 text-white"
+                style={{
+                  fontFamily: "Roboto, sans-serif",
+                  letterSpacing: "0.05em",
+                  textShadow:
+                    "0px 2px 4px rgba(0, 0, 0, 0.5), 0px 4px 6px rgba(0, 0, 0, 0.25)",
+                }}
+              >
+                {(parseFloat(user.similarity) * 100).toFixed(2)}% match
+              </h3>
 
-            {/* Render other user attributes here */}
-          </div>
-        ))}
-      </div>
-
-      {selectedUser && (
-        <div className="fixed top-0 left-0 w-full h-full bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-2xl">
-            <h2 className="text-2xl font-bold mb-4">
-              User: {selectedUser.username}{" "}
-            </h2>
-            <div className="rounded-full mb-16 h-24 w-24 mx-auto mb-4 ">
-              <img
-                //src={profPic}
-                src={selectedUser.imgUrl}
-                alt="Profile"
-                className="rounded-full h-full w-full object-cover"
-              />
+              {/* Render other user attributes here */}
             </div>
-            <h3>Name: {selectedUser.name}</h3>
-            <h3>Bio: {selectedUser.bio}</h3>
-            <h3>Email: {selectedUser.email}</h3>
-            <h3>Personality: {selectedUser.personality}</h3>
-            <h3>Hygiene: {selectedUser.hygiene}</h3>
-            <h3>University: {selectedUser.university}</h3>
-            <h3>Major: {selectedUser.major}</h3>
-            <h3>
-              Sleep Time: {getSleepTimeDescription(selectedUser.sleepTime)}
-            </h3>
-            <h3>Smokes: {selectedUser.smoking}</h3>
-            <h3>Has Pets: {selectedUser.pets}</h3>
-            <h3>Hygiene: {selectedUser.username}</h3>
-            {/* Render more detailed user attributes here */}
-            <button
-              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 mt-4"
-              onClick={closeDetailedView}
-            >
-              Close
-            </button>
-          </div>
+          ))}
         </div>
-      )}
+
+        {selectedUser && (
+          <div className="fixed top-0 left-0 w-full h-full bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-2xl">
+              <h2 className="text-2xl font-bold mb-4">
+                User: {selectedUser.username}{" "}
+              </h2>
+              <div className="rounded-full mb-16 h-24 w-24 mx-auto mb-4 ">
+                <img
+                  //src={profPic}
+                  src={selectedUser.imgUrl}
+                  alt="Profile"
+                  className="rounded-full h-full w-full object-cover"
+                />
+              </div>
+              <h3>Name: {selectedUser.name}</h3>
+              <h3>Bio: {selectedUser.bio}</h3>
+              <h3>Email: {selectedUser.email}</h3>
+              <h3>Personality: {selectedUser.personality}</h3>
+              <h3>Hygiene: {selectedUser.hygiene}</h3>
+              <h3>University: {selectedUser.university}</h3>
+              <h3>Major: {selectedUser.major}</h3>
+              <h3>
+                Sleep Time: {getSleepTimeDescription(selectedUser.sleepTime)}
+              </h3>
+              <h3>Smokes: {selectedUser.smoking}</h3>
+              <h3>Has Pets: {selectedUser.pets}</h3>
+              <h3>Hygiene: {selectedUser.username}</h3>
+              {/* Render more detailed user attributes here */}
+              <button
+                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 mt-4"
+                onClick={closeDetailedView}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
       <div>
         <button
           onClick={refreshRecommendations}
@@ -236,7 +245,7 @@ const Recommendations: React.FC<RecommendationsResultsProps> = ({
           Refresh
         </button>
       </div>
-    </div>
+    </>
   );
 };
 
