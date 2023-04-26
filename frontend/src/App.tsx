@@ -24,7 +24,7 @@ function App() {
     // Set the component to visible after a delay
     const timer = setTimeout(() => {
       setVisible(true);
-    }, 5000); // Adjust the delay as needed
+    }, 2000); // Adjust the delay as needed
 
     // Clean up the timer when the component is unmounted
     return () => clearTimeout(timer);
@@ -47,8 +47,8 @@ function App() {
         </div>
       </nav> */}
 
-      <div className="transition-wrapper">
-        {!visible && <div className="transition-background"></div>}
+      <div className="transition-wrapper backdrop-blur-sm">
+        {!visible && <div className="transition-background-entry"></div>}
         <div className={`transition-content ${visible ? "visible" : ""}`}></div>
         <div
           className="min-h-screen flex items-center justify-center bg-center bg-cover"
@@ -56,7 +56,7 @@ function App() {
             backgroundImage: `url(${backgroundPic})`,
           }}
         >
-          <div className="bg-blue-400 p-8 bg-opacity-30 rounded-lg shadow-md w-full max-w-md mx-auto border-4 border-black">
+          <div className="bg-blue-400 p-8  bg-opacity-30 rounded-lg shadow-md w-full max-w-md mx-auto border border-black">
             <h2
               className="text-2xl font-semibold mb-4 text-center text-white"
               style={{
@@ -72,9 +72,8 @@ function App() {
             <div className="flex justify-center space-x-4">
               <Link
                 to="/login"
-                className="px-4 py-2 bg-gradient-to-r from-blue-600 via-blue-600 to-blue-400 text-white font-bold rounded hover:from-blue-400 hover:via-blue-300 hover:to-blue-200 transition-all"
+                className="px-4 py-2 opacity-61 hover:opacity-75 bg-gradient-to-r from-blue-600 via-blue-600 to-blue-400 text-white font-bold rounded hover:from-blue-400 hover:via-blue-300 hover:to-blue-200 transition-all"
               >
-                {/* <FontAwesomeIcon icon={faSearch} /> */}
                 Search Roommates
               </Link>
               {/* <Link

@@ -63,7 +63,8 @@ const USER_DETAILS = gql`
 `;
 
 const CREATE_PROFILE = gql`
-  mutation CreateUserProfile($input: UserProfile!) {
+  mutation CreateUserProfile($input: UserProfile) {
+    #prevents the user from signing up if the profile's not fully finished
     addUserProfile(input: $input) {
       ...UserDetails
     }
@@ -127,6 +128,8 @@ const ProfileInfo: React.FC = () => {
     { value: "music", label: "Music" },
     { value: "traveling", label: "Traveling" },
     { value: "cooking", label: "Cooking" },
+    { value: "painting", label: "Painting" },
+    { value: "coding", label: "Coding" },
     // Add more hobbies options here
   ];
 
@@ -303,22 +306,34 @@ const ProfileInfo: React.FC = () => {
   return (
     // <div className="bg-cover bg-black bg-center text-black-800 bg-fixed min-h-screen flex items-center justify-center">
     <div
-      className="min-h-screen flex items-center justify-center bg-center bg-cover"
+      className="min-h-screen flex b items-center justify-center bg-center bg-cover"
       style={{
         backgroundImage: `url(${backgroundPic})`,
       }}
     >
       <form
         onSubmit={handleSubmit}
-        className="bg-blue-500 bg-opacity-20 p-6 border-black border-2 rounded-lg shadow-lg w-full max-w-md mx-auto"
+        className="bg-blue-500 backdrop-blur-sm bg-opacity-20 p-6 border-black border-2 rounded-lg shadow-lg w-full max-w-md mx-auto"
         style={{
           marginTop: "6rem", // Adjust this value according to the height of the navbar
           scrollbarWidth: "thin",
           scrollbarColor: "rgba(0, 0, 0, 0.3) transparent",
         }}
       >
+        <h2
+          className="text-2xl font-semibold mb-2 text-center text-white"
+          style={{
+            fontFamily: "Roboto, sans-serif",
+            letterSpacing: "0.05em",
+            textShadow:
+              "0px 2px 4px rgba(0, 0, 0, 0.5), 0px 4px 6px rgba(0, 0, 0, 0.25)",
+          }}
+        >
+          Survey:
+        </h2>
+        <hr className="border-1 border-black" />
         <div
-          className="overflow-y-auto max-h-screen pt-32"
+          className="overflow-y-auto max-h-screen pt-5"
           style={{
             // marginTop: "2rem", // Adjust this value according to the height of the navbar
             maxHeight: "calc(100vh - 10rem)",
@@ -337,13 +352,14 @@ const ProfileInfo: React.FC = () => {
                   "0px 2px 4px rgba(0, 0, 0, 0.5), 0px 4px 6px rgba(0, 0, 0, 0.25)",
               }}
             >
-              Name:{" "}
+              Name:
             </label>
 
             <input
               type="text"
               name="name"
               value={formData.name}
+              required
               onChange={handleChange}
               className="mt-1 p-2 w-full border border-gray-300 rounded"
             />
@@ -360,7 +376,7 @@ const ProfileInfo: React.FC = () => {
                   "0px 2px 4px rgba(0, 0, 0, 0.5), 0px 4px 6px rgba(0, 0, 0, 0.25)",
               }}
             >
-              Gender:{" "}
+              Gender:
             </label>
 
             <select
@@ -388,7 +404,7 @@ const ProfileInfo: React.FC = () => {
                   "0px 2px 4px rgba(0, 0, 0, 0.5), 0px 4px 6px rgba(0, 0, 0, 0.25)",
               }}
             >
-              Short Biography:{" "}
+              Short Biography:
             </label>
 
             <div>
@@ -413,11 +429,12 @@ const ProfileInfo: React.FC = () => {
                   "0px 2px 4px rgba(0, 0, 0, 0.5), 0px 4px 6px rgba(0, 0, 0, 0.25)",
               }}
             >
-              Profile Image:{" "}
+              Profile Image:
             </label>
 
             <input
               type="file"
+              required
               onChange={handleImageUpload}
               className="mt-1 p-1 w-full border border-gray-300 rounded"
             />
@@ -545,7 +562,7 @@ const ProfileInfo: React.FC = () => {
                   "0px 2px 4px rgba(0, 0, 0, 0.5), 0px 4px 6px rgba(0, 0, 0, 0.25)",
               }}
             >
-              Sleep Time:{" "}
+              Sleep Time:
             </label>
 
             <select
@@ -573,7 +590,7 @@ const ProfileInfo: React.FC = () => {
                   "0px 2px 4px rgba(0, 0, 0, 0.5), 0px 4px 6px rgba(0, 0, 0, 0.25)",
               }}
             >
-              Personality:{" "}
+              Personality:
             </label>
 
             <select
@@ -607,6 +624,7 @@ const ProfileInfo: React.FC = () => {
               className="mt-1 p-1 w-full border font-greek border-gray-300 rounded"
               name="cleanliness"
               value={formData.cleanliness}
+              required
               onChange={handleChange}
             >
               <option value=""></option>
@@ -627,12 +645,13 @@ const ProfileInfo: React.FC = () => {
                   "0px 2px 4px rgba(0, 0, 0, 0.5), 0px 4px 6px rgba(0, 0, 0, 0.25)",
               }}
             >
-              How often do you have guests over?:{" "}
+              How often do you have guests over?:
             </label>
 
             <select
               className="mt-1 p-1 w-full border font-greek border-gray-300 rounded"
               name="guests"
+              required
               value={formData.guests}
               onChange={handleChange}
             >

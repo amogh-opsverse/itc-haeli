@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 //import "../styles/tailwind.css";
 import "./login.css";
+import { FiX } from "react-icons/fi";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faFilter,
@@ -112,8 +113,11 @@ const LoginForm = () => {
 
       <form
         onSubmit={handleSubmit}
-        className=" bg-blue-500 bg-opacity-20 p-8 border-4 border-black rounded-lg shadow-md w-full max-w-md mx-auto"
+        className=" bg-blue-500 bg-opacity-20 backdrop-blur-md p-8 border border-black rounded-lg shadow-md w-full max-w-md mx-auto"
       >
+        <Link to="/" className="position: relative top-2 right-2 text-blue">
+          <FiX size={29} />
+        </Link>
         <div className="mb-4">
           {/* <label
             htmlFor="username"
@@ -121,6 +125,7 @@ const LoginForm = () => {
           >
             Username:
           </label> */}
+
           <div>
             <h2
               className="text-2xl font-semibold mb-4 text-center text-white"
@@ -146,20 +151,20 @@ const LoginForm = () => {
         </div>
         <hr className="border-1 border-black mb-8" />
         <div className="rounded-md shadow-sm -space-y-px mb-4">
-          <div>
+          <div className="mb-2">
             <label htmlFor="username" className="sr-only">
               Username
             </label>
-            <input
-              id="username"
-              name="username"
-              type="text"
+            <input //this is the input field for username
+              id="username" //this is the id of the input field
+              name="username" //this is the name of the input field
+              type="text" //this is the type of the input field
               required
               value={formData.username}
               onChange={handleChange}
-              className="my-input appearance-none rounded-none relative block w-full px-3 py-2 border-2 border-black placeholder-black-500 text-black-100 rounded-t-md focus:outline-none focus:ring-orange-500 focus:border-orange-500 focus:z-10 sm:text-sm"
+              className="my-input appearance-none rounded-none relative block w-full px-3 py-2 border border-black placeholder-black-500 text-white rounded-t-md focus:outline-none focus:ring-orange-500 focus:border-orange-500 focus:z-10 sm:text-sm"
               placeholder="Username"
-              style={{ backgroundColor: "rgba(0, 235, 235, 0.5)" }}
+              style={{ backgroundColor: "rgba(0, 123, 123, 0.2)" }}
             />
           </div>
           <div>
@@ -173,35 +178,31 @@ const LoginForm = () => {
               value={formData.password}
               required
               onChange={handleChange}
-              className="my-input appearance-none rounded-none relative block w-full px-3 py-2 border-2 border-black placeholder-black-500 text-black-100 rounded-t-md focus:outline-none focus:ring-orange-500 focus:border-orange-500 focus:z-10 sm:text-sm"
+              className="my-input appearance-none rounded-none relative block w-full px-3 py-2 border border-black placeholder-black-500 text-white rounded-t-md focus:outline-none focus:ring-orange-500 focus:border-orange-500 focus:z-10 sm:text-sm"
               placeholder="Password"
-              style={{ backgroundColor: "rgba(0, 235 , 235, 0.5)" }}
+              style={{ backgroundColor: "rgba(0, 123 , 123, 0.2)" }}
             />
           </div>
         </div>
 
-        {/* <div className="mb-4">
-        
-          <input
-            type="password"
-            name="password"
-            id="password"
-            value={formData.password}
-            onChange={handleChange}
-            className="border-2 border-blue-500 p-2 rounded w-full focus:outline-none focus:border-blue-700"
-            placeholder="password"
-          />
-        </div> */}
-
         <button
           type="submit"
-          className="bg-blue-600 px-4 py-2 text-white mr-4 font-semibold rounded hover:bg-blue-700 transition-colors"
+          className="px-4 py-2 text-white font-semibold rounded hover:bg-opacity-80 transition-all mr-4"
+          style={{
+            backdropFilter: "blur(10px)",
+            backgroundColor: "rgba(37, 99, 235, 0.6)",
+          }}
         >
           <FontAwesomeIcon icon={faSignIn} />
         </button>
         <Link
           to="/signup"
-          className="px-4 py-2 bg-gradient-to-r from-blue-600 via-blue-600 to-blue-500 text-white font-bold rounded hover:from-blue-400 hover:via-blue-300 hover:to-blue-200 transition-all"
+          className="px-4 py-2 text-white font-bold rounded transition-all"
+          style={{
+            backdropFilter: "blur(10px)",
+            background:
+              "linear-gradient(90deg, rgba(37, 99, 235, 0.6), rgba(37, 99, 235, 0.6))",
+          }}
         >
           {/* <FontAwesomeIcon icon={faUserPlus} /> */}
           Sign Up

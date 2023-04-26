@@ -1,6 +1,22 @@
 const tf = require("@tensorflow/tfjs");
 const { v4: uuidv4 } = require("uuid");
 const Redis = require("ioredis");
+const axios = require("axios");
+const { bucket } = require("./google-storage");
+const {
+  indexRoommateProfile,
+  searchRoommateProfiles,
+  updateElasticsearchUser,
+} = require("./elasticsearch");
+//import { CourierClient } from "@trycourier/courier";
+const { CourierClient } = require("@trycourier/courier");
+const courier = CourierClient({
+  authorizationToken: "pk_prod_639FEYNKQX4ZZMPDJKTTS4TQETX6",
+});
+
+require("dotenv").config({ path: ".env" });
+
+const apiKey = process.env.OPEN_API_KEY;
 
 function getNewRedisClient() {
   const client = new Redis({
@@ -14,14 +30,44 @@ function getNewRedisClient() {
   return client;
 }
 
-function generateCacheKey(input) {
-  return Object.entries(input)
-    .sort()
-    .map(([key, value]) => `${key}:${value}`)
-    .join("|");
+const redisClient = getNewRedisClient();
+
+//handle uploads to gcs
+async function uploadImageToGCS(base64Image, filename) {
+  const buffer = Buffer.from(base64Image, "base64");
+
+  const file = bucket.file(filename);
+  const stream = file.createWriteStream({
+    metadata: {
+      contentType: "image/png", // or the appropriate content type of your image
+    },
+    public: true, // set the access control to allow public read access
+  });
+
+  return new Promise((resolve, reject) => {
+    stream.on("error", (error) => {
+      console.error("Error uploading image to Google Cloud Storage:", error);
+      reject(error);
+    });
+
+    stream.on("finish", () => {
+      const imageUrl = `https://storage.googleapis.com/${bucket.name}/${filename}`;
+      resolve(imageUrl);
+    });
+
+    stream.end(buffer);
+  });
 }
 
-const possibleHobbies = ["reading", "sports", "music", "gaming", "cooking"];
+const possibleHobbies = [
+  "reading",
+  "sports",
+  "music",
+  "gaming",
+  "cooking",
+  "coding",
+  "painting",
+];
 
 function oneHotEncodeHobbies(hobbies) {
   //match based on hobbies later?
@@ -77,15 +123,10 @@ async function findCompatibleUsers(models, targetUser) {
 
   // Fetch all users
   const users = await models.User.find({});
-  // const users = await models.User.find({
-  //   //culprit for not finding the recommended users
-  //   university: targetUser.university,
-  //   major: targetUser.major,
-  // }).select("username major smoke pets guests sleepTime hygiene personality");
 
   // Process user data into tensors and store in userTensors
   const userTensors = users.map((user) => {
-    //const encodedHobbies = oneHotEncodeHobbies(user.hobbies);
+    const encodedHobbies = oneHotEncodeHobbies(user.hobbies);
     // Convert user data into a tensor
     // (Modify this to use the features you want to consider for compatibility)
     return tf.tensor([
@@ -98,12 +139,12 @@ async function findCompatibleUsers(models, targetUser) {
       frequency[user.hygiene] || 0,
       personality[user.personality] || 0,
       gender[user.gender] || 0,
-      //...encodedHobbies
+      ...encodedHobbies,
     ]);
   });
 
   // Compute the cosine similarity between the target user and all other users
-  //const targetUserEncodedHobbies = oneHotEncodeHobbies(targetUser.hobbies);
+  const targetUserEncodedHobbies = oneHotEncodeHobbies(targetUser.hobbies);
   const targetUserTensor = tf.tensor([
     //targetUser.hobbies,
     major[targetUser.major] || 0,
@@ -115,20 +156,11 @@ async function findCompatibleUsers(models, targetUser) {
     personality[targetUser.personality] || 0,
     gender[targetUser.gender] || 0,
 
-    //...targetUserEncodedHobbies
+    ...targetUserEncodedHobbies,
   ]);
 
   //calculate similarity score for each userTensor in the userTensors array
-  // const similarities = userTensors.map((userTensor) => {
-  //   const dotProduct = tf.sum(tf.mul(userTensor, targetUserTensor));
-  //   const userTensorMagnitude = tf.norm(userTensor);
-  //   const targetUserTensorMagnitude = tf.norm(targetUserTensor);
-  //   return dotProduct
-  //     .div(
-  //       userTensorMagnitude.add(1e-8).mul(targetUserTensorMagnitude.add(1e-8))
-  //     )
-  //     .arraySync();
-  // });
+
   const similarities = await Promise.all(
     userTensors.map(async (userTensor) => {
       const dotProduct = tf.sum(tf.mul(userTensor, targetUserTensor));
@@ -222,46 +254,49 @@ module.exports = {
         .limit(limit);
       console.log("search results users:", searchResults);
       return searchResults;
-      // const filterAttributes = [
-      //   input.university ? { university: input.university } : null,
-      //   input.smoke ? { smoke: input.smoke } : null,
-      //   input.sleepTime ? { sleepTime: input.sleepTime } : null,
-      //   input.guests ? { guests: input.guests } : null,
-      //   input.personality ? { personality: input.personality } : null,
-      //   input.hygiene ? { hygiene: input.hygiene } : null,
-      //   input.pets ? { pets: input.pets } : null,
-      // ];
+    },
+    elasticSearch: async (_, { input, skip = 0, limit = 100 }, { models }) => {
+      console.log("elastic query input:", input.query);
+      const searchResultsElastic = await searchRoommateProfiles(input.query);
+      console.log(
+        "search results users from elastic search:",
+        searchResultsElastic
+      );
+      //return ["test elastic search"];
+      return searchResultsElastic;
+    },
+    contactUser: async (_, { input, skip = 0, limit = 100 }, { models }) => {
+      console.log("courier sender email contact input:", input.senderEmail);
+      console.log("courier receiver email contact input:", input.receiverEmail);
 
-      // const validAttributes = filterAttributes.filter(
-      //   (attribute) => attribute !== null
+      //implement the api here:
+      let receiverEmail = input.receiverEmail;
+      let senderEmail = input.senderEmail;
+
+      const { requestId } = await courier.send({
+        message: {
+          to: {
+            email: receiverEmail,
+          },
+          //template: "4WMFBTF2Z945PMQ334V7CH5Y3PVZ",
+          data: {
+            sendersEmail: senderEmail,
+          },
+          content: {
+            title: "Hello!",
+            body: "{{sendersEmail}}, requested to connect!",
+          },
+        },
+      });
+
+      // const searchResultsElastic = await searchRoommateProfiles(input.query);
+      // console.log(
+      //   "search results users from elastic search:",
+      //   searchResultsElastic
       // );
 
-      // const filter = {
-      //   $and: validAttributes,
-      // };
-
-      // // Generate a unique cache key based on the input filters
-      // const cacheKey = generateCacheKey(input);
-
-      // // Check if the search results are available in the Redis cache
-      // const redisClient = getNewRedisClient();
-      // const cachedResults = await redisClient.get(cacheKey);
-
-      // if (cachedResults) {
-      //   console.log("Using cached results");
-      //   return JSON.parse(cachedResults);
-      // }
-
-      // const searchResults = await models.User.find(filter)
-      //   .skip(skip)
-      //   .limit(limit);
-      // console.log("Search results users:", searchResults);
-
-      // // Cache the search results in Redis with an expiration time (e.g. 1 hour)
-      // await redisClient.setex(cacheKey, 3600, JSON.stringify(searchResults));
-      // redisClient.quit();
-
-      // return searchResults;
+      //return either a 200 response or a response which notifies the user of a successful connection
+      return "email resolver accessed for courier api";
     },
     recommendUsers: async (_, { input, skip = 0, limit = 10 }, { models }) => {
       user = await models.User.findOne({
@@ -275,18 +310,7 @@ module.exports = {
       );
 
       console.log("compatible users:", compatibleUsers);
-      //compiling a list of recommendations upon new user sign up
-      //stores the list of compatible users for the user that just signed up
-      // const updateRecommendation = await new models.Recs({
-      //   _id: uuidv4(),
-      //   user: input.username,
-      //   //recommendedUsers: compatibleUsers,
-      //   recommendedUsers: compatibleUsers.map((user) => ({
-      //     _id: user._id,
-      //     username: user.username, //can also include profile pic and email to retrieve for later
-      //     similarity: user.similarity, //storing the similarity value to be displayed as part of the recommended results
-      //   })),
-      // });
+
       const updateRecommendation = await models.Recs.findOneAndUpdate(
         { user: input.username }, // Find the document by username
         {
@@ -375,54 +399,34 @@ module.exports = {
 
       return recUsers;
     },
-    // addUser: async (_, { input }, { models }) => {
-    //   const newUser = new models.User({
-    //     //the field names here have to correspond with the field names in the mongoose
-    //     //schema defined in user.js
-
-    //     username: input.username,
-    //     password: input.password,
-    //     email: input.email,
-    //   });
-
-    //   try {
-    //     await newUser.save();
-    //     return newUser;
-    //   } catch (err) {
-    //     console.error("Error creating user:", err);
-    //     throw new Error("Failed to create user");
-    //   }
-    // },
 
     async userLogin(_, { input }, { models }) {
       //trying out redis
       console.log("Input:", input);
       try {
-        // First, try to get the user from the Redis cache
-        const redisClient = getNewRedisClient();
-        console.log("Using Redis client");
-
-        const redisKey = `user:${input.username}`;
-        const cachedUser = await redisClient.get(redisKey).then(JSON.parse);
-
-        let user;
+        // const redisKey = `user:${input.username}`;
+        // const cachedUser = await redisClient.get(redisKey).then(JSON.parse);
 
         // If the user is found in the cache, use it
-        if (cachedUser) {
-          console.log("User found in cache:", cachedUser);
-          user = cachedUser;
-        } else {
-          // If the user is not in the cache, query the database
-          user = await models.User.findOne({
-            username: input.username,
-          }).exec();
+        // if (cachedUser) {
+        //   console.log("User found in cache:", cachedUser);
+        //   user = cachedUser;
+        // } else {
+        //   // If the user is not in the cache, query the database
+        //   user = await models.User.findOne({
+        //     username: input.username,
+        //   }).exec();
 
-          // Store the user in the Redis cache
-          await redisClient.set(redisKey, JSON.stringify(user), "EX", 3600); // Cache for 1 hour
-          console.log("User fetched from database:", user);
-        }
+        //   // Store the user in the Redis cache
+        //   await redisClient.set(redisKey, JSON.stringify(user), "EX", 3600); // Cache for 1 hour
+        //   console.log("User fetched from database:", user);
+        // }
+        //redisClient.quit();
 
-        redisClient.quit();
+        let user;
+        user = await models.User.findOne({
+          username: input.username,
+        }).exec();
 
         console.log("User:", user);
         console.log("resolver password:", input.password);
@@ -460,6 +464,7 @@ module.exports = {
           university: input.university,
           major: input.major,
           sleepTime: input.sleepTime,
+          savedImages: [],
           guests: input.guests,
           hygiene: input.cleanliness,
           hobbies: input.hobbies,
@@ -469,6 +474,26 @@ module.exports = {
 
         try {
           await newUser.save();
+          const newProfile = {
+            username: newUser.username,
+            email: newUser.email,
+            name: newUser.name,
+            bio: newUser.bio,
+            personality: newUser.personality,
+            gender: newUser.gender,
+            imgUrl: newUser.imgUrl,
+            university: newUser.university,
+            major: newUser.major,
+            sleepTime: newUser.sleepTime,
+            savedImages: newUser.savedImages,
+            guests: newUser.guests,
+            hygiene: newUser.hygiene,
+            hobbies: newUser.hobbies,
+            smoke: newUser.smoke,
+            pets: newUser.pets,
+          };
+          let newProfileId = newUser._id;
+          indexRoommateProfile(newProfileId, newProfile);
           if (!newUser) {
             throw new Error("Failed to create user profile");
           }
@@ -496,6 +521,7 @@ module.exports = {
           });
           try {
             await newRecommendation.save(); //saving the changes to db
+
             //return newRecommendation;
           } catch (err) {
             console.error("Error creating user:", err);
@@ -524,6 +550,7 @@ module.exports = {
       const update = {
         //the input would have to be passed in from the root state (Home.tsx)
         //name: input.name,
+        imgUrl: input.image,
         bio: input.biography,
         university: input.university,
         major: input.major,
@@ -543,7 +570,338 @@ module.exports = {
         options
       );
 
+      const upProfile = {
+        username: updatedProfile.username,
+        email: updatedProfile.email,
+        name: updatedProfile.name,
+        bio: updatedProfile.bio,
+        personality: updatedProfile.personality,
+        gender: updatedProfile.gender,
+        imgUrl: updatedProfile.imgUrl,
+        university: updatedProfile.university,
+        major: updatedProfile.major,
+        sleepTime: updatedProfile.sleepTime,
+        savedImages: updatedProfile.savedImages,
+        guests: updatedProfile.guests,
+        hygiene: updatedProfile.hygiene,
+        hobbies: updatedProfile.hobbies,
+        smoke: updatedProfile.smoke,
+        pets: updatedProfile.pets,
+      };
       console.log("updated user profile:", updatedProfile);
+      let updatedProfileId = updatedProfile._id;
+
+      await updateElasticsearchUser(updatedProfileId, upProfile);
+    },
+    getUserPrivacy: async (_, { input }, { models }) => {
+      //to remember the privacy settings for the user to set initial the toggle state
+      const { username } = input;
+      const filter = { username };
+
+      try {
+        // // Try to get data from Redis cache
+        // const cachedData = await redisClient.get(cacheKey);
+
+        // if (cachedData) {
+        //   console.log("Returning data from Redis cache");
+        //   return JSON.parse(cachedData);
+        // }
+
+        const user = await models.User.findOne(filter);
+        if (!user) {
+          throw new Error("User not found");
+        }
+
+        let privacySetting;
+        if (input.privacyType == "images") {
+          privacySetting = user.collectionPublic;
+          console.log("User collection privacy setting:", privacySetting);
+        } else if (input.privacyType == "profile") {
+          privacySetting = user.profilePublic;
+          console.log("User profile privacy setting:", privacySetting);
+        }
+        // Cache the data in Redis with an expiration time (e.g., 3600 seconds = 1 hour)
+        //await redisClient.setex(cacheKey, 3600, JSON.stringify(savedImages));
+
+        return privacySetting;
+      } catch (error) {
+        console.error("Error fetching user designs:", error);
+        throw error;
+      }
+    },
+
+    togglePrivacy: async (_, { input }, { models }) => {
+      const filter = { username: input.username };
+      let update;
+      if (input.privacyType == "profile") {
+        update = {
+          //the input would have to be passed in from the root state (Home.tsx)
+          //name: input.name,
+          profilePublic: input.profilePublic,
+        };
+      } else if (input.privacyType == "images") {
+        update = {
+          //the input would have to be passed in from the root state (Home.tsx)
+          //name: input.name,
+          collectionPublic: input.collectionPublic,
+        };
+      }
+      const options = { new: true, upsert: true };
+
+      const updatedProfile = await models.User.findOneAndUpdate(
+        filter, //the filter here being the unique username from the frontend
+        update,
+        options
+      );
+      const upProfile = {
+        username: updatedProfile.username,
+        email: updatedProfile.email,
+        name: updatedProfile.name,
+        bio: updatedProfile.bio,
+        personality: updatedProfile.personality,
+        gender: updatedProfile.gender,
+        imgUrl: updatedProfile.imgUrl,
+        university: updatedProfile.university,
+        major: updatedProfile.major,
+        sleepTime: updatedProfile.sleepTime,
+        savedImages: updatedProfile.savedImages,
+        guests: updatedProfile.guests,
+        hygiene: updatedProfile.hygiene,
+        hobbies: updatedProfile.hobbies,
+        smoke: updatedProfile.smoke,
+        pets: updatedProfile.pets,
+      };
+
+      // Update Elasticsearch
+      let updatedProfileId = updatedProfile._id;
+      await updateElasticsearchUser(updatedProfileId, upProfile);
+
+      console.log("updated user profile:", upProfile);
+      //return "saved image";
+      return updatedProfile;
+    },
+    saveUserDesign: async (_, { input }, { models }) => {
+      const filter = { username: input.username };
+      const response = await axios.get(input.imgSrc, {
+        responseType: "arraybuffer",
+      });
+      const imgPrompt = input.imgPrompt;
+      console.log("the prompt used to generate the image:", imgPrompt);
+      const buffer = Buffer.from(response.data, "binary");
+      const uuid = uuidv4();
+
+      // Convert the image to a base64 string
+      const base64Image = buffer.toString("base64");
+      const imageUrl = await uploadImageToGCS(
+        base64Image,
+        // "some-unique-image-filename"
+        uuid
+      );
+      console.log("base64 converted dall-e image uploaded to gcs:", imageUrl);
+      const update = {
+        $addToSet: {
+          // savedImages: imageUrl,
+          savedImages: {
+            imgUrl: imageUrl,
+            prompt: imgPrompt,
+          },
+        },
+      };
+
+      const options = { new: true, upsert: true };
+
+      const updatedProfile = await models.User.findOneAndUpdate(
+        filter,
+        update,
+        options
+      );
+
+      const upProfile = {
+        username: updatedProfile.username,
+        email: updatedProfile.email,
+        name: updatedProfile.name,
+        bio: updatedProfile.bio,
+        personality: updatedProfile.personality,
+        gender: updatedProfile.gender,
+        imgUrl: updatedProfile.imgUrl,
+        university: updatedProfile.university,
+        major: updatedProfile.major,
+        sleepTime: updatedProfile.sleepTime,
+        savedImages: updatedProfile.savedImages,
+        guests: updatedProfile.guests,
+        hygiene: updatedProfile.hygiene,
+        hobbies: updatedProfile.hobbies,
+        smoke: updatedProfile.smoke,
+        pets: updatedProfile.pets,
+      };
+
+      // Update Redis cache
+      const cacheKey = `userDesigns:${input.username}`;
+      const newSavedImages = updatedProfile.savedImages;
+      await redisClient.set(cacheKey, JSON.stringify(newSavedImages)); //updating the cache with the new saved images
+
+      // Update Elasticsearch
+      let updatedProfileId = updatedProfile._id;
+      await updateElasticsearchUser(updatedProfileId, upProfile);
+
+      console.log("updated user profile:", upProfile);
+      return "saved image";
+    },
+    deleteDesign: async (_, { input }, { models }) => {
+      const filter = { username: input.username };
+      const imageUrl = input.imgSrc;
+
+      console.log("Deleting image URL:", imageUrl);
+      const update = {
+        $pull: {
+          // savedImages: imageUrl,
+          savedImages: {
+            imgUrl: imageUrl,
+            // prompt: imgPrompt,
+          },
+        },
+      };
+
+      const options = { new: true };
+
+      const updatedProfile = await models.User.findOneAndUpdate(
+        filter,
+        update,
+        options
+      );
+
+      const upProfile = {
+        username: updatedProfile.username,
+        email: updatedProfile.email,
+        name: updatedProfile.name,
+        bio: updatedProfile.bio,
+        personality: updatedProfile.personality,
+        gender: updatedProfile.gender,
+        imgUrl: updatedProfile.imgUrl,
+        university: updatedProfile.university,
+        major: updatedProfile.major,
+        sleepTime: updatedProfile.sleepTime,
+        savedImages: updatedProfile.savedImages,
+        guests: updatedProfile.guests,
+        hygiene: updatedProfile.hygiene,
+        hobbies: updatedProfile.hobbies,
+        smoke: updatedProfile.smoke,
+        pets: updatedProfile.pets,
+      };
+
+      // Update Redis cache
+      const cacheKey = `userDesigns:${input.username}`;
+      const newSavedImages = updatedProfile.savedImages;
+      await redisClient.set(cacheKey, JSON.stringify(newSavedImages));
+
+      // Update Elasticsearch
+      let updatedProfileId = updatedProfile._id;
+      await updateElasticsearchUser(updatedProfileId, upProfile);
+
+      console.log("Updated user profile:", updatedProfile);
+      return "Deleted image";
+    },
+
+    getUserDesigns: async (_, { input }, { models }) => {
+      const { username } = input;
+      const filter = { username };
+      const cacheKey = `userDesigns:${username}`;
+
+      try {
+        // Try to get data from Redis cache
+        const cachedData = await redisClient.get(cacheKey);
+
+        if (cachedData) {
+          console.log("Returning data from Redis cache");
+          return JSON.parse(cachedData);
+        }
+
+        const user = await models.User.findOne(filter);
+        if (!user) {
+          throw new Error("User not found");
+        }
+
+        const savedImages = user.savedImages;
+        console.log("User saved images:", savedImages);
+
+        // Cache the data in Redis with an expiration time (e.g., 3600 seconds = 1 hour)
+        await redisClient.setex(cacheKey, 3600, JSON.stringify(savedImages));
+
+        return savedImages;
+      } catch (error) {
+        console.error("Error fetching user designs:", error);
+        throw error;
+      }
+    },
+
+    createDesigns: async (_, { input }, { models }) => {
+      async function generateDetailedPrompt(userPrompt) {
+        try {
+          const response = await axios.post(
+            "https://api.openai.com/v1/engines/text-davinci-002/completions",
+            JSON.stringify({
+              prompt: `Given the user's input: "${userPrompt}", create a detailed description including the words photorealistic and high-quality for the interior design of a living space in a true-to-life manner.`,
+              //The description should capture the essence of the theme, include essential elements, and describe the atmosphere, furniture, decorations, color scheme, and other aspects of the room in a true-to-life manner.`,
+              max_tokens: 150, // Increase max tokens if necessary
+              n: 1, // Generate multiple responses
+              stop: null, // Stop when encountering a newline character
+              //temperature: 0.6, // Adjust the temperature for more diverse outputs
+              top_p: 0.7, // Use top_p instead of temperature for more focused outputs
+              echo: false, // Do not include the input prompt in the response
+            }),
+            {
+              headers: {
+                "Content-Type": "application/json; charset=utf-8",
+                Authorization: `Bearer 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`,
+              },
+            }
+          );
+          // return response.data.choices[0].text.trim();
+          const generatedText = response.data.choices[0].text.trim();
+
+          return generatedText;
+        } catch (error) {
+          console.error("Error generating detailed prompt:", error);
+          throw error;
+        }
+      }
+
+      async function fetchGeneratedImages(imagePrompt) {
+        if (imagePrompt === "") {
+          imagePrompt = "cute kitten";
+        }
+        try {
+          const response = await axios.post(
+            "https://api.openai.com/v1/images/generations",
+            {
+              model: "image-alpha-001",
+              prompt: `${imagePrompt}`,
+              num_images: 1,
+              size: "512x512",
+              response_format: "url",
+            },
+            {
+              headers: {
+                "Content-Type": "application/json",
+                //Authorization: `Bearer ${apiKey}`,
+                Authorization:
+                  "Bearer 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",
+              },
+            }
+          );
+          return response.data.data.map((image) => image.url);
+        } catch (error) {
+          console.error("Error fetching generated images:", error);
+          throw error;
+        }
+      }
+
+      const detailedPrompt = await generateDetailedPrompt(input.prompt);
+      console.log("detailed davinci prompt: ", detailedPrompt);
+      const urls = await fetchGeneratedImages(detailedPrompt);
+
+      console.log("generated image urls: ", urls);
+      return urls;
     },
   },
 };

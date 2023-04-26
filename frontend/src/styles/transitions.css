@@ -68,7 +68,7 @@
   position: relative;
 }
 
-.transition-background {
+.transition-background-entry {
   position: absolute;
   top: 0;
   left: 0;
@@ -80,6 +80,17 @@
   animation: fadeOut 2.5s ease-in-out forwards;
 }
 
+.transition-background-exit {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: url("../assets/oxbow.jpg");
+  background-size: cover;
+  background-position: center;
+  animation: fadeOut 2.5s ease-in-out forwards;
+}
 .transition-content {
   animation: fadeIn 2.5s ease-in-out forwards;
 }

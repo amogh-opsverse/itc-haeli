@@ -3,7 +3,8 @@ import React, { useState } from "react";
 //setting type
 import "../styles/pulse.css";
 import "./searchfilter.css";
-
+import { setActiveSearch } from "../redux/actions/searchActions";
+import { useDispatch } from "react-redux";
 interface SearchFilterProps {
   //for the state function to be passed from the home page
   onSearchAttributesChange: (attributes: any) => void;
@@ -18,6 +19,7 @@ const SearchFilter: React.FC<SearchFilterProps> = ({
   signedInUser,
 }) => {
   // const [searchTerm, setSearchTerm] = useState("");
+
   const [filterAttributes, setFilterAttributes] = useState({
     Hygiene: "",
     Pets: "",
@@ -46,15 +48,21 @@ const SearchFilter: React.FC<SearchFilterProps> = ({
     console.log("");
   };
 
+  const dispatch = useDispatch(); //redux dispatch
+
   const handleSearchClick = () => {
     // console.log("Search Term:", searchTerm);
     console.log("Filter Attributes:", filterAttributes);
     onSearchAttributesChange(filterAttributes); //executing the function passed in as prop from Home page
+    dispatch(setActiveSearch("local"));
     onToggleView(); //toggle the search results
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div
+      className="flex flex-col h-full backdrop-blur-md"
+      style={{ maxHeight: "345px", overflowY: "auto" }}
+    >
       <div className="justify-between items-center mb-4">
         <h3
           className="text-2xl font-semibold mb-4 text-center text-white"
@@ -73,7 +81,7 @@ const SearchFilter: React.FC<SearchFilterProps> = ({
       <hr className="border border-black mb-8" />
       <div
         className="flex flex-col h-full"
-        style={{ maxHeight: "169px", overflowY: "auto" }}
+        style={{ maxHeight: "209px", overflowY: "auto" }}
       >
         <div className="flex justify-center">
           <div className="filter-attributes space-y-4 flex-1 overflow-y-auto max-w-lg">

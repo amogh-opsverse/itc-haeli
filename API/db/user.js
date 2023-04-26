@@ -29,6 +29,15 @@ const UserSchema = new mongoose.Schema({
   hygiene: String,
   guests: String,
   hobbies: [String],
+  // savedImages: [String],
+  savedImages: [
+    {
+      imgUrl: String,
+      prompt: String,
+    },
+  ],
+  collectionPublic: Boolean,
+  profilePublic: Boolean,
   smoke: String,
   pets: String,
   //createdAt: Number,

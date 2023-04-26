@@ -50,6 +50,22 @@ const UPDATE_USER = gql`
   ${USER_DETAILS}
 `;
 
+//mutation to update privacy settings
+const UPDATE_PRIVACY = gql`
+  mutation ToggleUserPrivacy($input: CollectionPrivacy) {
+    togglePrivacy(input: $input) {
+      ...UserDetails
+    }
+  }
+  ${USER_DETAILS}
+`;
+
+const GET_PRIVACY = gql`
+  mutation GetUserPrivacy($privInput: CollectionPrivacy) {
+    getUserPrivacy(input: $privInput)
+  }
+`;
+
 interface FormData {
   username: string;
   email: string;
@@ -76,21 +92,9 @@ interface University {
 const ProfileView: React.FC<RecommendationsResultsProps> = ({
   loggedInUser,
 }) => {
-  // const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [updateUser, updatedUser] = useMutation(UPDATE_USER);
-
-  // const openDetailedView = (user: User) => {
-  //   console.log("user attributes from detailed view", user.name);
-  //   setSelectedUser(user);
-  // };
-
-  // //can implement a useEffect instead of passing it from the home component
-
-  // const closeDetailedView = () => {
-  //   setSelectedUser(null);
-  // };
-
-  //console.log("logged in user biography", loggedInUser.bio);
+  const [updateUserPrivacy, updatedUserPrivacy] = useMutation(UPDATE_PRIVACY);
+  const [getUserPrivacy, userPrivacy] = useMutation(GET_PRIVACY);
 
   const customStyles = {
     control: (provided: any) => ({
@@ -108,36 +112,60 @@ const ProfileView: React.FC<RecommendationsResultsProps> = ({
     }),
   };
 
-  const [recommendations, setRecommendations] = useState<User[] | any>([]);
+  //const [recommendations, setRecommendations] = useState<User[] | any>([]);
   const [majors, setMajors] = useState<MajorOption[]>([]);
   const [universities, setUniversities] = useState<University[]>([]);
+  const loggedInUsername = loggedInUser["data"]["userLogin"].username;
+  const [isLoading, setIsLoading] = useState(true);
 
-  // const [formData, setFormData] = useState<FormData>({
-  //   username: loggedInUser["data"]["userLogin"].username,
-  //   email: loggedInUser["data"]["userLogin"].email,
-  //   biography: loggedInUser["data"]["userLogin"].bio,
-  //   image: loggedInUser["data"]["userLogin"].imgUrl,
-  //   university: loggedInUser["data"]["userLogin"].university,
-  //   major: loggedInUser["data"]["userLogin"].major,
-  //   sleepTime: loggedInUser["data"]["userLogin"].sleepTime,
-  //   cleanliness: loggedInUser["data"]["userLogin"].hygiene,
-  //   smoking: loggedInUser["data"]["userLogin"].smoking,
-  //   guests: loggedInUser["data"]["userLogin"].guests,
-  //   pets: loggedInUser["data"]["userLogin"].pets,
-  //   hobbies: loggedInUser["data"]["userLogin"].hobbies,
-  // });
+  //set the private profile toggle
+  let [isPublic, setIsPublic] = useState(false);
+
+  //handles toggle for private profile
+  //sets the mode to public since the default is private (and vice versa)
+  const handleToggle = async () => {
+    setIsPublic(!isPublic); //default is false
+
+    try {
+      //the mutation resolver will find the user obj by the passed in username and then update the attributes along with it
+      setSearchLoading(true);
+      const input = {
+        //this variable has to match the defined parameter accepted by the resolver
+        username: loggedInUsername,
+        profilePublic: !isPublic,
+        privacyType: "profile",
+      };
+      console.log("username rec view", input);
+      //execute the mutation query to return a list of recommended users for the logged in user
+      let updatedUserPrivacyRes = await updateUserPrivacy({
+        variables: { input }, //the input has to match the input schema type defined in backend
+      });
+      // console.log("refreshed recommended list of users: ", recommendedUsers);
+      console.log(
+        "updated user privacy response: ",
+        updatedUserPrivacyRes.data
+      );
+      setSearchLoading(false);
+      //setRecommendations(updatedUser.data.recommendUsers); //useState setter to set the returned recommendations
+    } catch (error) {
+      console.error("Error fetching recommended users:", error);
+    }
+  };
+
+  const [searchLoading, setSearchLoading] = useState(false);
+
   const [formData, setFormData] = useState<FormData>({
     username: loggedInUser["data"]["userLogin"].username,
     email: loggedInUser["data"]["userLogin"].email,
-    biography: "",
-    image: "",
-    university: "",
-    major: "",
-    sleepTime: "",
-    cleanliness: "",
-    smoking: "",
-    guests: "",
-    pets: "",
+    biography: loggedInUser["data"]["userLogin"].bio,
+    image: loggedInUser["data"]["userLogin"].imgUrl,
+    university: loggedInUser["data"]["userLogin"].university,
+    major: loggedInUser["data"]["userLogin"].major,
+    sleepTime: loggedInUser["data"]["userLogin"].sleepTime,
+    cleanliness: loggedInUser["data"]["userLogin"].hygiene,
+    smoking: loggedInUser["data"]["userLogin"].smoke,
+    guests: loggedInUser["data"]["userLogin"].guests,
+    pets: loggedInUser["data"]["userLogin"].pets,
     hobbies: loggedInUser["data"]["userLogin"].hobbies,
   });
 
@@ -149,29 +177,9 @@ const ProfileView: React.FC<RecommendationsResultsProps> = ({
     { value: "cooking", label: "Cooking" },
     // Add more hobbies options here
   ];
+  const [isProfilePublic, setIsProfilePublic] = useState<boolean | null>(null); //use the existing user's privacy state to set the toggle
 
   useEffect(() => {
-    // const fetchMajors = async () => {
-    //   try {
-    //     const response = await fetch("https://your-api-url.com/majors");
-    //     const data = await response.json();
-    //     setMajors(data);
-    //   } catch (error) {
-    //     console.error("Error fetching majors:", error);
-    //   }
-    // };
-
-    // const fetchUniversities = async () => {
-    //   try {
-    //     const response = await fetch(
-    //       "http://universities.hipolabs.com/search?country=United States"
-    //     );
-    //     const universities = await response.json();
-    //     setUniversities(universities);
-    //   } catch (error) {
-    //     console.error("Error fetching universities:", error);
-    //   }
-    // };
     const fetchMajors = async () => {
       try {
         const response = await fetch(
@@ -203,10 +211,37 @@ const ProfileView: React.FC<RecommendationsResultsProps> = ({
         console.error("Error fetching universities:", error);
       }
     };
+    const fetchUserPrivacy = async () => {
+      setIsLoading(true);
+
+      const privInput = {
+        //this variable has to match the defined parameter accepted by the resolver
+        username: loggedInUsername,
+        privacyType: "profile",
+      };
+      let priv = await getUserPrivacy({
+        variables: { privInput }, //the input has to match the input schema type defined in backend
+      });
+      // console.log(
+      //   "the value of collectionPublic privacy value for loggedInUser gpt ",
+      //   priv.data.getUserPrivacy
+      // );
+      console.log(
+        "the type and value of collectionPublic privacy value for loggedInUser gpt:",
+        typeof priv.data.getUserPrivacy,
+        priv.data.getUserPrivacy
+      );
+
+      setIsPublic(priv.data.getUserPrivacy);
+      setIsLoading(false);
+
+      // console.log("is images public value:", isImagesPublic);
+    };
 
     fetchMajors();
     fetchUniversities();
-  }, [0]);
+    fetchUserPrivacy();
+  }, []);
 
   const handleImageUpload = async (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -242,6 +277,7 @@ const ProfileView: React.FC<RecommendationsResultsProps> = ({
     console.log("profile being edited", loggedInUser);
     try {
       //the mutation resolver will find the user obj by the passed in username and then update the attributes along with it
+      setSearchLoading(true);
       const input = {
         //this variable has to match the defined parameter accepted by the resolver
         username: formData.username,
@@ -263,12 +299,9 @@ const ProfileView: React.FC<RecommendationsResultsProps> = ({
         variables: { input }, //the input has to match the input schema type defined in backend
       });
       // console.log("refreshed recommended list of users: ", recommendedUsers);
-      console.log(
-        "recommended list of users: ",
-        updatedUser,
-        updatedUser.data.recommendUsers
-      );
-      setRecommendations(updatedUser.data.recommendUsers); //useState setter to set the returned recommendations
+      console.log("updated user profile: ", updatedUser.data.recommendUsers);
+      setSearchLoading(false);
+      //setRecommendations(updatedUser.data.recommendUsers); //useState setter to set the returned recommendations
     } catch (error) {
       console.error("Error fetching recommended users:", error);
     }
@@ -299,10 +332,11 @@ const ProfileView: React.FC<RecommendationsResultsProps> = ({
 
   return (
     //replace this with the profile info page view with a button that updates the user info
-    <div className="flex flex-col h-full">
+
+    <div className="flex flex-col h-full items-center">
       <div className="justify-between items-center ">
         <h3
-          className="text-2xl font-semibold text-center text-white"
+          className="text-xl font-semibold text-center text-white"
           style={{
             fontFamily: "Roboto, sans-serif",
             letterSpacing: "0.05em",
@@ -310,374 +344,406 @@ const ProfileView: React.FC<RecommendationsResultsProps> = ({
               "0px 2px 4px rgba(0, 0, 0, 0.5), 0px 4px 6px rgba(0, 0, 0, 0.25)",
           }}
         >
-          Edit Profile
+          Your Profile
         </h3>
+        <hr className="border-t border-white w-full mt-4  mb-2" />
+        {isLoading ? (
+          <p>Loading...</p>
+        ) : (
+          <div className="flex items-center mt-1 mb-2">
+            <label
+              htmlFor="toggleCollection"
+              className="flex items-center cursor-pointer"
+            >
+              <div className="relative">
+                <div>
+                  <span className="text-white mr-2">Make Private?</span>
+
+                  <input
+                    type="checkbox"
+                    id="toggleCollection"
+                    className="cursor-pointer"
+                    checked={!isPublic || false}
+                    onChange={handleToggle}
+                  />
+                  <div>
+                    <label
+                      htmlFor="toggleCollection"
+                      className="cursor-pointer text-white"
+                      style={{ fontSize: "13px" }}
+                    >
+                      current status: {isPublic ? "Public" : "Private"}
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </label>
+          </div>
+        )}
+        <hr className="border-t border-white w-full mt-4 " />{" "}
       </div>
-      <hr className="flame border border-black mt-8" />
 
-      {/* <form
-        onSubmit={editProfile}
-        className=" bg-blue-500 bg-opacity-20 p-6 border-black border-2 rounded-lg shadow-lg w-full max-w-md mx-auto"
-        style={{
-          marginTop: "2rem", // Adjust this value according to the height of the navbar
-          scrollbarWidth: "thin",
-          scrollbarColor: "rgba(0, 0, 0, 0.3) transparent",
-        }}
-      > */}
-      <div
-        className="flex flex-col h-full"
-        style={{ maxHeight: "300px", overflowY: "auto" }}
-      >
-        <div
-          className="overflow-y-auto max-h-screen pt-10"
-          style={{
-            // marginTop: "2rem", // Adjust this value according to the height of the navbar
-            maxHeight: "calc(100vh - 10rem)",
-            // scrollbarWidth: "thin",
-            // scrollbarColor: "rgba(0, 0, 0, 0.3) transparent",
-          }}
-        >
-          <div className="mb-4">
-            <label
-              htmlFor="bio"
-              className="font-semibold mb-2 text-white"
-              style={{
-                fontFamily: "Roboto, sans-serif",
-                letterSpacing: "0.05em",
-                textShadow:
-                  "0px 2px 4px rgba(0, 0, 0, 0.5), 0px 4px 6px rgba(0, 0, 0, 0.25)",
-              }}
-            >
-              Bio:
-            </label>
-
-            <div>
-              <textarea
-                name="biography"
-                value={formData.biography}
-                onChange={handleChange}
-                className="mt-1 p-2 w-full border border-gray-300 rounded h-32"
-                style={{ backgroundColor: "rgba(240, 240, 240, 0.8)" }}
-              />
-            </div>
-          </div>
-
-          <br />
-          <div className="mb-4">
-            <label
-              htmlFor="ppic"
-              className="font-semibold mb-2 text-white"
-              style={{
-                fontFamily: "Roboto, sans-serif",
-                letterSpacing: "0.05em",
-                textShadow:
-                  "0px 2px 4px rgba(0, 0, 0, 0.5), 0px 4px 6px rgba(0, 0, 0, 0.25)",
-              }}
-            >
-              Profile Image:{" "}
-            </label>
-
-            <input
-              type="file"
-              onChange={handleImageUpload}
-              className="mt-1 p-1 w-full border border-gray-300 rounded"
-            />
-          </div>
-          <br />
-          <div className="mb-4">
-            <label
-              htmlFor="hobbies"
-              className="font-semibold mb-2 text-white"
-              style={{
-                fontFamily: "Roboto, sans-serif",
-                letterSpacing: "0.05em",
-                textShadow:
-                  "0px 2px 4px rgba(0, 0, 0, 0.5), 0px 4px 6px rgba(0, 0, 0, 0.25)",
-              }}
-            >
-              Hobbies:
-            </label>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-              }}
-            >
-              <Select<HobbyOption, true>
-                options={hobbiesOptions}
-                isMulti
-                onChange={handleHobbiesChange}
-                placeholder="select upto 3 hobbies"
-                maxMenuHeight={formData.hobbies.length < 3 ? 300 : 0} // Set maxMenuHeight to 0 to disable scrolling when 3 hobbies are selected
-                value={hobbiesOptions.filter((option) =>
-                  formData.hobbies.includes(option.value)
-                )}
-                styles={customStyles}
-              />
-            </div>
-          </div>
-          <br />
-          <div className="select-container mb-4">
-            <label
-              htmlFor="university"
-              className="font-semibold mb-2 text-white"
-              style={{
-                fontFamily: "Roboto, sans-serif",
-                letterSpacing: "0.05em",
-                textShadow:
-                  "0px 2px 4px rgba(0, 0, 0, 0.5), 0px 4px 6px rgba(0, 0, 0, 0.25)",
-              }}
-            >
-              University:
-            </label>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-              }}
-            >
-              <select
-                className="filter-select mb-2 transparent-dropdown"
-                name="university"
-                value={formData.university}
-                onChange={handleChange}
-              >
-                {/* Add university options here */}
-                <option value="">Select a university</option>
-                {universities.map((university, index) => (
-                  // <option key={university.country} value={university.name}>
-                  <option key={index} value={university.name}>
-                    {university.name}
-                  </option>
-                ))}
-                {/* <option value="university1">University 1</option>
-          <option value="university2">University 2</option> */}
-              </select>
-            </div>
-          </div>
-          <br />
-          <div className=" mb-4">
-            <label
-              htmlFor="major"
-              className="font-semibold mb-2 text-white"
-              style={{
-                fontFamily: "Roboto, sans-serif",
-                letterSpacing: "0.05em",
-                textShadow:
-                  "0px 2px 4px rgba(0, 0, 0, 0.5), 0px 4px 6px rgba(0, 0, 0, 0.25)",
-              }}
-            >
-              Major:
-            </label>
-
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-              }}
-            >
-              <select
-                className="filter-select mb-2 transparent-dropdown"
-                name="major"
-                value={formData.major}
-                onChange={handleChange}
-              >
-                <option value=""></option>
-                {majors.map((major) => (
-                  <option key={major.id} value={major.name}>
-                    {major.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <br />
-          <div className=" mb-4">
-            <label
-              htmlFor="sleep"
-              className="font-semibold mb-2 text-white"
-              style={{
-                fontFamily: "Roboto, sans-serif",
-                letterSpacing: "0.05em",
-                textShadow:
-                  "0px 2px 4px rgba(0, 0, 0, 0.5), 0px 4px 6px rgba(0, 0, 0, 0.25)",
-              }}
-            >
-              Sleep Time:{" "}
-            </label>
-
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-              }}
-            >
-              <select
-                className="filter-select mb-2 transparent-dropdown"
-                name="sleepTime"
-                value={formData.sleepTime}
-                onChange={handleChange}
-              >
-                <option value=""></option>
-                <option value="1">Before 9pm</option>
-                <option value="2">9pm - 11pm</option>
-                <option value="3">11pm - 1am</option>
-                <option value="4">1am - 3am</option>
-              </select>
-            </div>
-          </div>
-
-          <br />
-          <div className=" mb-4">
-            <label
-              htmlFor="hygiene"
-              className="font-semibold mb-2 text-white"
-              style={{
-                fontFamily: "Roboto, sans-serif",
-                letterSpacing: "0.05em",
-                textShadow:
-                  "0px 2px 4px rgba(0, 0, 0, 0.5), 0px 4px 6px rgba(0, 0, 0, 0.25)",
-              }}
-            >
-              Hygiene:{" "}
-            </label>
-
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-              }}
-            >
-              <select
-                className="filter-select mb-2 transparent-dropdown"
-                name="cleanliness"
-                value={formData.cleanliness}
-                onChange={handleChange}
-              >
-                <option value=""></option>
-                <option value="OFTEN">often</option>
-                <option value="SOMETIMES">sometimes</option>
-                <option value="NEVER">never</option>
-              </select>
-            </div>
-          </div>
-          <br />
-          <div className=" mb-4">
-            <label
-              htmlFor="smoke"
-              className="font-semibold mb-2 text-white"
-              style={{
-                fontFamily: "Roboto, sans-serif",
-                letterSpacing: "0.05em",
-                textShadow:
-                  "0px 2px 4px rgba(0, 0, 0, 0.5), 0px 4px 6px rgba(0, 0, 0, 0.25)",
-              }}
-            >
-              Guests:{" "}
-            </label>
-
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-              }}
-            >
-              <select
-                className="filter-select mb-2 transparent-dropdown"
-                name="guests"
-                value={formData.guests}
-                onChange={handleChange}
-              >
-                <option value=""></option>
-                <option value="OFTEN">often</option>
-                <option value="SOMETIMES">sometimes</option>
-                <option value="NEVER">never</option>
-              </select>
-            </div>
-          </div>
-          <br />
-
-          {/* <div className="space-y-4 text-gray-800"> */}
-          <div className="mb-4">
-            <label
-              htmlFor="smoke"
-              className="font-semibold mb-2 text-white"
-              style={{
-                fontFamily: "Roboto, sans-serif",
-                letterSpacing: "0.05em",
-                textShadow:
-                  "0px 2px 4px rgba(0, 0, 0, 0.5), 0px 4px 6px rgba(0, 0, 0, 0.25)",
-              }}
-            >
-              Smoking
-            </label>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-              }}
-            >
-              <select
-                className="filter-select mb-2 transparent-dropdown"
-                name="smoking"
-                value={formData.smoking}
-                onChange={handleChange}
-              >
-                <option value=""></option>
-                <option value="yes">yes</option>
-                <option value="no">no</option>
-              </select>
-            </div>
-          </div>
-          <br />
-
-          <div className="mb-4">
-            <label
-              htmlFor="pets"
-              className="font-semibold mb-2 text-white"
-              style={{
-                fontFamily: "Roboto, sans-serif",
-                letterSpacing: "0.05em",
-                textShadow:
-                  "0px 2px 4px rgba(0, 0, 0, 0.5), 0px 4px 6px rgba(0, 0, 0, 0.25)",
-              }}
-            >
-              Pets
-            </label>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-              }}
-            >
-              <select
-                className="filter-select mb-2 transparent-dropdown"
-                name="pets"
-                value={formData.pets}
-                onChange={handleChange}
-              >
-                <option value=""></option>
-                <option value="yes">yes</option>
-                <option value="no">no</option>
-              </select>
-            </div>
-          </div>
-
-          <button
-            onClick={editProfile}
-            className="bg-blue-800 text-gray-100 px-4 py-2 rounded hover:bg-gray-700 font-semibold"
+      <div>
+        {searchLoading ? (
+          <div
+            className="flex justify-center  items-center"
+            style={{
+              height: "135px",
+              // overflowY: "auto",
+            }}
           >
-            Update
-          </button>
-        </div>
+            <div className="clame"></div>
+          </div>
+        ) : (
+          <div
+            className="flex flex-col h-full"
+            style={{ maxHeight: "280px", overflowY: "auto" }}
+          >
+            <div
+              className="overflow-y-auto max-h-screen pt-10"
+              style={{
+                // marginTop: "2rem", // Adjust this value according to the height of the navbar
+                maxHeight: "calc(100vh - 10rem)",
+                // scrollbarWidth: "thin",
+                // scrollbarColor: "rgba(0, 0, 0, 0.3) transparent",
+              }}
+            >
+              <div className="mb-4">
+                <label
+                  htmlFor="bio"
+                  className="font-semibold mb-2 text-white"
+                  style={{
+                    fontFamily: "Roboto, sans-serif",
+                    letterSpacing: "0.05em",
+                    textShadow:
+                      "0px 2px 4px rgba(0, 0, 0, 0.5), 0px 4px 6px rgba(0, 0, 0, 0.25)",
+                  }}
+                >
+                  Bio:
+                </label>
+
+                <div>
+                  <textarea
+                    name="biography"
+                    value={formData.biography}
+                    onChange={handleChange}
+                    className="mt-1 p-2 w-full border border-gray-300 rounded h-32"
+                    style={{ backgroundColor: "rgba(240, 240, 240, 0.8)" }}
+                  />
+                </div>
+              </div>
+
+              <br />
+              <div className="mb-4">
+                <label
+                  htmlFor="ppic"
+                  className="font-semibold mb-2 text-white"
+                  style={{
+                    fontFamily: "Roboto, sans-serif",
+                    letterSpacing: "0.05em",
+                    textShadow:
+                      "0px 2px 4px rgba(0, 0, 0, 0.5), 0px 4px 6px rgba(0, 0, 0, 0.25)",
+                  }}
+                >
+                  Profile Image:
+                </label>
+
+                <input
+                  type="file"
+                  onChange={handleImageUpload}
+                  className="mt-1 p-1 w-full border border-gray-300 rounded"
+                />
+              </div>
+              <br />
+              <div className="mb-4">
+                <label
+                  htmlFor="hobbies"
+                  className="font-semibold mb-2 text-white"
+                  style={{
+                    fontFamily: "Roboto, sans-serif",
+                    letterSpacing: "0.05em",
+                    textShadow:
+                      "0px 2px 4px rgba(0, 0, 0, 0.5), 0px 4px 6px rgba(0, 0, 0, 0.25)",
+                  }}
+                >
+                  Hobbies:
+                </label>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                  }}
+                >
+                  <Select<HobbyOption, true>
+                    options={hobbiesOptions}
+                    isMulti
+                    onChange={handleHobbiesChange}
+                    placeholder="select upto 3 hobbies"
+                    maxMenuHeight={formData.hobbies.length < 3 ? 300 : 0} // Set maxMenuHeight to 0 to disable scrolling when 3 hobbies are selected
+                    value={hobbiesOptions.filter((option) =>
+                      formData.hobbies.includes(option.value)
+                    )}
+                    styles={customStyles}
+                  />
+                </div>
+              </div>
+              <br />
+              <div className="select-container mb-4">
+                <label
+                  htmlFor="university"
+                  className="font-semibold mb-2 text-white"
+                  style={{
+                    fontFamily: "Roboto, sans-serif",
+                    letterSpacing: "0.05em",
+                    textShadow:
+                      "0px 2px 4px rgba(0, 0, 0, 0.5), 0px 4px 6px rgba(0, 0, 0, 0.25)",
+                  }}
+                >
+                  University:
+                </label>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                  }}
+                >
+                  <select
+                    className="filter-select mb-2 transparent-dropdown"
+                    name="university"
+                    value={formData.university}
+                    onChange={handleChange}
+                  >
+                    <option value="">Select a university</option>
+                    {universities.map((university, index) => (
+                      <option key={index} value={university.name}>
+                        {university.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <br />
+              <div className=" mb-4">
+                <label
+                  htmlFor="major"
+                  className="font-semibold mb-2 text-white"
+                  style={{
+                    fontFamily: "Roboto, sans-serif",
+                    letterSpacing: "0.05em",
+                    textShadow:
+                      "0px 2px 4px rgba(0, 0, 0, 0.5), 0px 4px 6px rgba(0, 0, 0, 0.25)",
+                  }}
+                >
+                  Major:
+                </label>
+
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                  }}
+                >
+                  <select
+                    className="filter-select mb-2 transparent-dropdown"
+                    name="major"
+                    value={formData.major}
+                    onChange={handleChange}
+                  >
+                    <option value=""></option>
+                    {majors.map((major) => (
+                      <option key={major.id} value={major.name}>
+                        {major.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <br />
+              <div className=" mb-4">
+                <label
+                  htmlFor="sleep"
+                  className="font-semibold mb-2 text-white"
+                  style={{
+                    fontFamily: "Roboto, sans-serif",
+                    letterSpacing: "0.05em",
+                    textShadow:
+                      "0px 2px 4px rgba(0, 0, 0, 0.5), 0px 4px 6px rgba(0, 0, 0, 0.25)",
+                  }}
+                >
+                  Sleep Time:
+                </label>
+
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                  }}
+                >
+                  <select
+                    className="filter-select mb-2 transparent-dropdown"
+                    name="sleepTime"
+                    value={formData.sleepTime}
+                    onChange={handleChange}
+                  >
+                    <option value=""></option>
+                    <option value="1">Before 9pm</option>
+                    <option value="2">9pm - 11pm</option>
+                    <option value="3">11pm - 1am</option>
+                    <option value="4">1am - 3am</option>
+                  </select>
+                </div>
+              </div>
+
+              <br />
+              <div className=" mb-4">
+                <label
+                  htmlFor="hygiene"
+                  className="font-semibold mb-2 text-white"
+                  style={{
+                    fontFamily: "Roboto, sans-serif",
+                    letterSpacing: "0.05em",
+                    textShadow:
+                      "0px 2px 4px rgba(0, 0, 0, 0.5), 0px 4px 6px rgba(0, 0, 0, 0.25)",
+                  }}
+                >
+                  Hygiene:
+                </label>
+
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                  }}
+                >
+                  <select
+                    className="filter-select mb-2 transparent-dropdown"
+                    name="cleanliness"
+                    value={formData.cleanliness}
+                    onChange={handleChange}
+                  >
+                    <option value="OFTEN">often</option>
+                    <option value="SOMETIMES">sometimes</option>
+                    <option value="NEVER">never</option>
+                  </select>
+                </div>
+              </div>
+              <br />
+              <div className=" mb-4">
+                <label
+                  htmlFor="smoke"
+                  className="font-semibold mb-2 text-white"
+                  style={{
+                    fontFamily: "Roboto, sans-serif",
+                    letterSpacing: "0.05em",
+                    textShadow:
+                      "0px 2px 4px rgba(0, 0, 0, 0.5), 0px 4px 6px rgba(0, 0, 0, 0.25)",
+                  }}
+                >
+                  Guests:
+                </label>
+
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                  }}
+                >
+                  <select
+                    className="filter-select mb-2 transparent-dropdown"
+                    name="guests"
+                    value={formData.guests}
+                    onChange={handleChange}
+                  >
+                    <option value="OFTEN">often</option>
+                    <option value="SOMETIMES">sometimes</option>
+                    <option value="NEVER">never</option>
+                  </select>
+                </div>
+              </div>
+              <br />
+
+              <div className="mb-4">
+                <label
+                  htmlFor="smoke"
+                  className="font-semibold mb-2 text-white"
+                  style={{
+                    fontFamily: "Roboto, sans-serif",
+                    letterSpacing: "0.05em",
+                    textShadow:
+                      "0px 2px 4px rgba(0, 0, 0, 0.5), 0px 4px 6px rgba(0, 0, 0, 0.25)",
+                  }}
+                >
+                  Smoking
+                </label>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                  }}
+                >
+                  <select
+                    className="filter-select mb-2 transparent-dropdown"
+                    name="smoking"
+                    value={formData.smoking}
+                    onChange={handleChange}
+                  >
+                    <option value=""></option>
+                    <option value="yes">yes</option>
+                    <option value="no">no</option>
+                  </select>
+                </div>
+              </div>
+              <br />
+
+              <div className="mb-4">
+                <label
+                  htmlFor="pets"
+                  className="font-semibold mb-2 text-white"
+                  style={{
+                    fontFamily: "Roboto, sans-serif",
+                    letterSpacing: "0.05em",
+                    textShadow:
+                      "0px 2px 4px rgba(0, 0, 0, 0.5), 0px 4px 6px rgba(0, 0, 0, 0.25)",
+                  }}
+                >
+                  Pets
+                </label>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                  }}
+                >
+                  <select
+                    className="filter-select mb-2 transparent-dropdown"
+                    name="pets"
+                    value={formData.pets}
+                    onChange={handleChange}
+                  >
+                    <option value=""></option>
+                    <option value="yes">yes</option>
+                    <option value="no">no</option>
+                  </select>
+                </div>
+              </div>
+
+              <button
+                onClick={editProfile}
+                className="bg-blue-800 text-gray-100 px-4 py-2 rounded hover:bg-gray-700 font-semibold"
+              >
+                Update
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
