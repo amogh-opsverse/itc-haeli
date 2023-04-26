@@ -11,7 +11,7 @@ const {
 //import { CourierClient } from "@trycourier/courier";
 const { CourierClient } = require("@trycourier/courier");
 const courier = CourierClient({
-  authorizationToken: "pk_prod_639FEYNKQX4ZZMPDJKTTS4TQETX6",
+  authorizationToken: "redacted",
 });
 
 require("dotenv").config({ path: ".env" });
