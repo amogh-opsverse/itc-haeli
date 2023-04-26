@@ -6,7 +6,7 @@ const apiVal = process.env.ELASTIC_API_KEY;
 const client = new Client({
   node: "https://77543d26092b47a394e69c6694883ceb.us-central1.gcp.cloud.es.io:443",
   auth: {
-    apiKey: "TWlQVmU0Y0JaRnBiaHNYejdQMjQ6THV0UWJQMFNUTTY1LWg3OEVsVDVHUQ==",
+    apiKey: "redacted",
   },
 });
 
