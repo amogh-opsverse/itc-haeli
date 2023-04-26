@@ -21,7 +21,7 @@ const apiKey = process.env.OPEN_API_KEY;
 function getNewRedisClient() {
   const client = new Redis({
     // Add your configuration options here, if needed
-    password: "DLtLfalG0P1q4DEC6NZIQB54Z23WCImL",
+    password: "redacted",
     host: "redis-15161.c246.us-east-1-4.ec2.cloud.redislabs.com",
     port: 15161,
   });
@@ -852,7 +852,7 @@ module.exports = {
             {
               headers: {
                 "Content-Type": "application/json; charset=utf-8",
-                Authorization: `Bearer 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`,
+                Authorization: `Bearer <apiKey>`,
               },
             }
           );
@@ -885,7 +885,7 @@ module.exports = {
                 "Content-Type": "application/json",
                 //Authorization: `Bearer ${apiKey}`,
                 Authorization:
-                  "Bearer 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",
+                  "Bearer <apikey>",
               },
             }
           );
